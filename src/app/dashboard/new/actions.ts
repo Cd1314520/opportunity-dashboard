@@ -11,6 +11,12 @@ import { tavily } from "@tavily/core";
 const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY! });
 import Firecrawl from "@mendable/firecrawl-js";
 
+async function requireUserId(): Promise<string> {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+  return userId;
+}
+
 import { db } from "@/lib/db";
 import { opportunities } from "@/lib/db/schema";
 import {
@@ -20,10 +26,7 @@ import {
 } from "./schema";
 
 export async function createOpportunity(values: OpportunityFormValues) {
-  const { userId } = await auth();
-  if (!userId) {
-    redirect("/sign-in");
-  }
+  await requireUserId();
 
   const parsed = opportunitySchema.safeParse(values);
   if (!parsed.success) {
@@ -103,10 +106,7 @@ const draftSchema = z.object({
 export async function scrapeAndDraft(
   url: string
 ): Promise<ScrapeAndDraftResult> {
-  const { userId } = await auth();
-  if (!userId) {
-    return { ok: false, error: "Not authenticated" };
-  }
+  await requireUserId();
 
   try {
     const firecrawl = new Firecrawl(process.env.FIRECRAWL_API_KEY!);
@@ -135,10 +135,7 @@ export async function scrapeAndDraft(
 export async function pasteAndDraft(
   content: string
 ): Promise<ScrapeAndDraftResult> {
-  const { userId } = await auth();
-  if (!userId) {
-    return { ok: false, error: "Not authenticated" };
-  }
+  await requireUserId();
 
   if (!content.trim()) {
     return { ok: false, error: "Please paste some content first." };
@@ -158,10 +155,7 @@ export async function searchAndDraft(
   name: string,
   organization: string
 ): Promise<ScrapeAndDraftResult> {
-  const { userId } = await auth();
-  if (!userId) {
-    return { ok: false, error: "Not authenticated" };
-  }
+  await requireUserId();
 
   if (!name.trim()) {
     return { ok: false, error: "Please enter a name." };
