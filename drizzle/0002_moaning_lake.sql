@@ -1,0 +1,1 @@
+ALTER TABLE "opportunities" ADD CONSTRAINT "opportunities_url_unique" UNIQUE("url");

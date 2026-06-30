@@ -35,6 +35,7 @@ export async function updateOpportunity(id: string, values: OpportunityFormValue
       url: data.url || null,
       contact_email: data.contact_email || null,
       notes: data.notes || null,
+      follow_up_at: data.follow_up_at ? new Date(data.follow_up_at) : null,
       updated_at: new Date(),
     })
     .where(eq(opportunities.id, id));

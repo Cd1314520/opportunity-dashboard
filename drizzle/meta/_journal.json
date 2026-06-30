@@ -8,6 +8,20 @@
       "when": 1782608931851,
       "tag": "0000_smart_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782712778214,
+      "tag": "0001_abnormal_marauders",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782857635023,
+      "tag": "0002_moaning_lake",
+      "breakpoints": true
     }
   ]
 }

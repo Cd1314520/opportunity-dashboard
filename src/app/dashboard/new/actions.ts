@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { generateObject } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { tavily } from "@tavily/core";
@@ -35,28 +36,53 @@ export async function createOpportunity(values: OpportunityFormValues) {
 
   const data = parsed.data;
 
-  await db.insert(opportunities).values({
-    name: data.name,
-    organization: data.organization,
-    type: data.type,
-    status: data.status,
-    url: data.url || null,
-    contact_email: data.contact_email || null,
-    notes: data.notes || null,
-  });
+  const followUpAt = data.follow_up_at ? new Date(data.follow_up_at) : null;
+
+  await db
+    .insert(opportunities)
+    .values({
+      name: data.name,
+      organization: data.organization,
+      type: data.type,
+      status: data.status,
+      url: data.url || null,
+      contact_email: data.contact_email || null,
+      notes: data.notes || null,
+      follow_up_at: followUpAt,
+    })
+    .onConflictDoUpdate({
+      target: opportunities.url,
+      // ponytail: status intentionally omitted — re-scraping an existing URL
+      // must not reset the user's pipeline progress back to the form default
+      set: {
+        name: data.name,
+        organization: data.organization,
+        type: data.type,
+        contact_email: data.contact_email || null,
+        notes: data.notes || null,
+        follow_up_at: followUpAt,
+        updated_at: new Date(),
+      },
+    });
 
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }
 
 function buildPrompt(content: string, extraInstructions = "") {
-  return `You are helping a student track academic and career opportunities.
-Analyze the following content and extract structured information.
+  return `You are an expert outreach assistant helping a student track academic and career opportunities and draft a highly personalized, concise, professional cold email.
 ${extraInstructions}
 
+Scraped context (Markdown/Text):
+---
 ${content}
+---
 
-Fill in the fields based on what you find. For draft_email, write a complete, personalized outreach message that references specific details from the content.`;
+Do two things from this single context:
+1. Extract structured fields (name, organization, type, research_areas) for the student's tracker.
+2. Draft the outreach email per the guidelines in draft_email's description, and surface the single concrete hook you anchored on in specific_reference.
+
+Never invent papers, projects, or affiliations not present in the context. If a field is uncertain, leave it null/empty.`;
 }
 
 async function runDraftGeneration(prompt: string): Promise<ScrapeAndDraftResult> {
@@ -73,6 +99,7 @@ async function runDraftGeneration(prompt: string): Promise<ScrapeAndDraftResult>
       organization: object.organization,
       type: object.type,
       research_areas: object.research_areas,
+      specific_reference: object.specific_reference,
       draft_email: object.draft_email,
     },
   };
@@ -96,10 +123,19 @@ const draftSchema = z.object({
   research_areas: z
     .array(z.string())
     .describe("Research topics, technical skills, or focus areas mentioned"),
+  specific_reference: z
+    .string()
+    .describe(
+      "The single concrete detail from the context that the email anchors on — e.g., a paper title, project name, technology, or course. One short phrase quoted from or directly derived from the context. Empty string if nothing concrete was available."
+    ),
   draft_email: z
     .string()
     .describe(
-      "Personalized outreach email with exactly 3 short paragraphs: (1) who you are and why you're reaching out to them specifically, (2) why their work/research is relevant to you with specific references, (3) a polite call to action. Complete sentences, professional tone, no placeholders."
+      `Highly personalized, concise outreach email in English, under 150 words. Short paragraphs.
+- Specific reference: anchor on the concrete detail in specific_reference (a paper, project, or technology from the context). No generic compliments.
+- Value proposition: briefly connect their work to why the student is reaching out. Collaborative, respectful, low-pressure tone.
+- Clear CTA: end with one simple direct question (e.g., "Are you open to a brief 10-minute chat next week?").
+- Complete sentences, professional tone, no placeholders, no invented facts.`
     ),
 });
 
@@ -121,9 +157,19 @@ export async function scrapeAndDraft(
     }
 
     const markdown = scraped.markdown.slice(0, 12000);
-    return await runDraftGeneration(
+    const result = await runDraftGeneration(
       buildPrompt(`URL: ${url}\n\nPage content:\n---\n${markdown}\n---`)
     );
+
+    if (result.ok) {
+      const [row] = await db
+        .select({ id: opportunities.id })
+        .from(opportunities)
+        .where(eq(opportunities.url, url))
+        .limit(1);
+      return { ...result, existing: Boolean(row) };
+    }
+    return result;
   } catch (e) {
     return {
       ok: false,

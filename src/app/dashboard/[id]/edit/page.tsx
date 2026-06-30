@@ -40,6 +40,7 @@ export default async function EditOpportunityPage({
     url: opportunity.url ?? "",
     contact_email: opportunity.contact_email ?? "",
     notes: opportunity.notes ?? "",
+    follow_up_at: opportunity.follow_up_at?.toISOString().slice(0, 10) ?? "",
   };
 
   const boundAction = updateOpportunity.bind(null, id);
