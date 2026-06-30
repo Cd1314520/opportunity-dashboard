@@ -167,7 +167,7 @@ export async function scrapeAndDraft(
         .from(opportunities)
         .where(eq(opportunities.url, url))
         .limit(1);
-      return { ...result, existing: Boolean(row) };
+      return { ...result, data: { ...result.data, url }, existing: Boolean(row) };
     }
     return result;
   } catch (e) {

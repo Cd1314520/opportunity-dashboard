@@ -24,6 +24,7 @@ export type ScrapeData = {
   research_areas: string[];
   specific_reference: string;
   draft_email: string;
+  url?: string;
 };
 
 export type ScrapeAndDraftResult =

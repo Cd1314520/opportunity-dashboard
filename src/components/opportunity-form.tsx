@@ -80,6 +80,7 @@ export function OpportunityForm({
       });
     if (data.type)
       form.setValue("type", data.type, { shouldValidate: true });
+    if (data.url) form.setValue("url", data.url, { shouldValidate: true });
     if (data.research_areas.length > 0) {
       const existing = form.getValues("notes");
       const areas = `Research areas: ${data.research_areas.join(", ")}`;
