@@ -52,7 +52,7 @@ export async function createOpportunity(values: OpportunityFormValues) {
       follow_up_at: followUpAt,
     })
     .onConflictDoUpdate({
-      target: opportunities.url,
+      target: [opportunities.user_id, opportunities.url],
       // ponytail: status intentionally omitted — re-scraping an existing URL
       // must not reset the user's pipeline progress back to the form default
       set: {
@@ -64,10 +64,6 @@ export async function createOpportunity(values: OpportunityFormValues) {
         follow_up_at: followUpAt,
         updated_at: new Date(),
       },
-      // url is globally unique for now, so a conflict can hit another user's
-      // row — only update when the existing row is ours. Cross-user collisions
-      // silently no-op until the (user_id, url) compound-unique task lands.
-      setWhere: eq(opportunities.user_id, userId),
     });
 
   revalidatePath("/dashboard");
