@@ -41,7 +41,7 @@ const DEFAULT_STATUS_SUGGESTIONS = [
 
 interface OpportunityFormProps {
   initialData?: Partial<OpportunityFormValues>;
-  action: (values: OpportunityFormValues) => Promise<void>;
+  action: (values: OpportunityFormValues) => Promise<{ error: string } | void>;
   submitLabel?: string;
   showScraper?: boolean;
   typeSuggestions?: string[];
@@ -90,7 +90,10 @@ export function OpportunityForm({
 
   function onSubmit(values: OpportunityFormValues) {
     startTransition(async () => {
-      await action(values);
+      const result = await action(values);
+      if (result?.error) {
+        form.setError("root", { message: result.error });
+      }
     });
   }
 
@@ -103,6 +106,12 @@ export function OpportunityForm({
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col gap-6"
         >
+          {form.formState.errors.root?.message && (
+            <p className="text-sm font-medium text-destructive">
+              {form.formState.errors.root.message}
+            </p>
+          )}
+
           <FormField
             control={form.control}
             name="name"
