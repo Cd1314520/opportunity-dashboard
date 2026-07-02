@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { opportunities } from "@/lib/db/schema";
@@ -64,6 +64,7 @@ export default async function DashboardPage() {
   const rows = await db
     .select()
     .from(opportunities)
+    .where(eq(opportunities.user_id, userId))
     .orderBy(desc(opportunities.created_at));
 
   return (

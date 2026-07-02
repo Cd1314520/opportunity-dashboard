@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { opportunities } from "@/lib/db/schema";
@@ -16,7 +16,7 @@ async function requireUserId(): Promise<string> {
 }
 
 export async function updateOpportunity(id: string, values: OpportunityFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const parsed = opportunitySchema.safeParse(values);
   if (!parsed.success) {
@@ -38,7 +38,7 @@ export async function updateOpportunity(id: string, values: OpportunityFormValue
       follow_up_at: data.follow_up_at ? new Date(data.follow_up_at) : null,
       updated_at: new Date(),
     })
-    .where(eq(opportunities.id, id));
+    .where(and(eq(opportunities.id, id), eq(opportunities.user_id, userId)));
 
   revalidatePath("/dashboard");
   redirect("/dashboard");

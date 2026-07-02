@@ -8,17 +8,19 @@ const sqlClient = neon(process.env.DATABASE_URL!);
 
 export const db = drizzle(sqlClient, { schema });
 
-export async function getFormSuggestions() {
+export async function getFormSuggestions(userId: string) {
   const [typeRows, statusRows] = await Promise.all([
     db
       .selectDistinct({ val: opportunities.type })
       .from(opportunities)
-      .where(sql`${opportunities.type} is not null and ${opportunities.type} != ''`),
+      .where(
+        sql`${opportunities.user_id} = ${userId} and ${opportunities.type} is not null and ${opportunities.type} != ''`
+      ),
     db
       .selectDistinct({ val: opportunities.status })
       .from(opportunities)
       .where(
-        sql`${opportunities.status} is not null and ${opportunities.status} != ''`
+        sql`${opportunities.user_id} = ${userId} and ${opportunities.status} is not null and ${opportunities.status} != ''`
       ),
   ]);
   return {

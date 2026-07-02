@@ -4,6 +4,7 @@ export const opportunities = pgTable("opportunities", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
+  user_id: text("user_id").notNull(),
   type: text("type").notNull(),
   name: text("name").notNull(),
   organization: text("organization").notNull(),

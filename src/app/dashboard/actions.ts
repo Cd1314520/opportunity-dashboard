@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { opportunities } from "@/lib/db/schema";
@@ -15,9 +15,11 @@ async function requireUserId(): Promise<string> {
 }
 
 export async function deleteOpportunity(id: string) {
-  await requireUserId();
+  const userId = await requireUserId();
 
-  await db.delete(opportunities).where(eq(opportunities.id, id));
+  await db
+    .delete(opportunities)
+    .where(and(eq(opportunities.id, id), eq(opportunities.user_id, userId)));
 
   revalidatePath("/dashboard");
 }

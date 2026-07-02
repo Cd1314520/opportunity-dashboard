@@ -1,0 +1,1 @@
+ALTER TABLE "opportunities" ADD COLUMN "user_id" text NOT NULL;

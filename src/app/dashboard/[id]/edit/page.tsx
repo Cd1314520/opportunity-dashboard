@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db, getFormSuggestions } from "@/lib/db";
 import { opportunities } from "@/lib/db/schema";
@@ -24,8 +24,12 @@ export default async function EditOpportunityPage({
 
   const [[opportunity], { typeSuggestions, statusSuggestions }] =
     await Promise.all([
-      db.select().from(opportunities).where(eq(opportunities.id, id)).limit(1),
-      getFormSuggestions(),
+      db
+        .select()
+        .from(opportunities)
+        .where(and(eq(opportunities.id, id), eq(opportunities.user_id, userId)))
+        .limit(1),
+      getFormSuggestions(userId),
     ]);
 
   if (!opportunity) {

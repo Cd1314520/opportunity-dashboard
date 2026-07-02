@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { generateObject } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { tavily } from "@tavily/core";
@@ -27,7 +27,7 @@ import {
 } from "./schema";
 
 export async function createOpportunity(values: OpportunityFormValues) {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const parsed = opportunitySchema.safeParse(values);
   if (!parsed.success) {
@@ -41,6 +41,7 @@ export async function createOpportunity(values: OpportunityFormValues) {
   await db
     .insert(opportunities)
     .values({
+      user_id: userId,
       name: data.name,
       organization: data.organization,
       type: data.type,
@@ -63,6 +64,10 @@ export async function createOpportunity(values: OpportunityFormValues) {
         follow_up_at: followUpAt,
         updated_at: new Date(),
       },
+      // url is globally unique for now, so a conflict can hit another user's
+      // row — only update when the existing row is ours. Cross-user collisions
+      // silently no-op until the (user_id, url) compound-unique task lands.
+      setWhere: eq(opportunities.user_id, userId),
     });
 
   revalidatePath("/dashboard");
@@ -142,7 +147,7 @@ const draftSchema = z.object({
 export async function scrapeAndDraft(
   url: string
 ): Promise<ScrapeAndDraftResult> {
-  await requireUserId();
+  const userId = await requireUserId();
 
   try {
     const firecrawl = new Firecrawl(process.env.FIRECRAWL_API_KEY!);
@@ -165,7 +170,7 @@ export async function scrapeAndDraft(
       const [row] = await db
         .select({ id: opportunities.id })
         .from(opportunities)
-        .where(eq(opportunities.url, url))
+        .where(and(eq(opportunities.url, url), eq(opportunities.user_id, userId)))
         .limit(1);
       return { ...result, data: { ...result.data, url }, existing: Boolean(row) };
     }
