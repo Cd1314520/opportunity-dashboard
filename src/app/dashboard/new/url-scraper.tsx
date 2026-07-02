@@ -23,7 +23,7 @@ export function UrlScraper({ onFill }: UrlScraperProps) {
   const [draftEmail, setDraftEmail] = useState<string | null>(null);
   const [specificReference, setSpecificReference] = useState<string | null>(null);
   const [existing, setExisting] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [isPending, startTransition] = useTransition();
 
   function switchMode(next: Mode) {
@@ -68,9 +68,15 @@ export function UrlScraper({ onFill }: UrlScraperProps) {
 
   async function handleCopy() {
     if (!draftEmail) return;
-    await navigator.clipboard.writeText(draftEmail);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(draftEmail);
+      setCopyState("copied");
+    } catch {
+      // clipboard blocked (permissions / insecure context) — the textarea
+      // below is selectable, so manual copy still works
+      setCopyState("failed");
+    }
+    setTimeout(() => setCopyState("idle"), 2000);
   }
 
   const canSubmit =
@@ -233,9 +239,16 @@ export function UrlScraper({ onFill }: UrlScraperProps) {
               variant="ghost"
               size="sm"
               onClick={handleCopy}
-              className="h-7 px-2 text-xs"
+              className={cn(
+                "h-7 px-2 text-xs",
+                copyState === "failed" && "text-destructive hover:text-destructive"
+              )}
             >
-              {copied ? "Copied!" : "Copy"}
+              {copyState === "copied"
+                ? "Copied!"
+                : copyState === "failed"
+                ? "Copy failed — select the text below"
+                : "Copy"}
             </Button>
           </div>
           {specificReference && (
